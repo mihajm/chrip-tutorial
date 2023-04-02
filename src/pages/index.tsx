@@ -7,6 +7,7 @@ import { api, type RouterOutputs } from '~/utils/api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import Image from 'next/image';
+import { useState } from 'react';
 import { LoadingPage } from '~/components/loading';
 
 dayjs.extend(relativeTime);
@@ -27,14 +28,32 @@ const ProfileImage = ({username, profileImageUrl}: Author) => {
 
 const CreatePostWizard = () => {
   const {user} = useUser();
+  const [input, setInput] = useState('');
+
+  const ctx = api.useContext();
+
+  const {mutate, isLoading: isPosting} = api.post.create.useMutation({
+    onSuccess: () => {
+      setInput('');
+      void ctx.post.getAll.invalidate();
+    }
+  });
 
   if (!user || !user.username) return null;
   
   
   return (
-    <div className='flex gap-3 w-full'>
+    <div className='flex gap-3 w-full grow items-center'>
       <ProfileImage {...user} username={user.username} />
-      <input placeholder='Type your chirp here...' className='bg-transparent grow outline-none'/>
+      <input 
+        placeholder='Type your chirp here...' 
+        className='bg-transparent grow outline-none'
+        value={input} 
+        onChange={(e) => setInput(e.target.value)}
+        disabled={isPosting}/>
+      <button 
+        onClick={() => mutate({content: input})} 
+        className='bg-blue-500 text-white rounded px-6 py-2'>Chirp</button>
     </div>
   );
 };
@@ -51,7 +70,7 @@ const PostView = ({content, createdAt, author}:  PostWithAuthor) => {
         <span className="font-thin">·</span>
         <span className="font-thin">{dayjs(createdAt).fromNow()}</span>
       </div>
-      <span>{content}</span>
+      <span className='text-xl'>{content}</span>
     </div>
   </div>;
 
@@ -89,10 +108,10 @@ const Home: NextPage = () => {
         <meta name="description" content="Tutorial twitter clone, built with t3" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="flex h-screen justify-center">
+      <main className="flex h-screen justify-center ">
         <div className="h-full w-full md:max-w-2xl border-x border-slate-400">
           <div className="border-b border-slate-400 p-4 flex">
-            <div className="flex justify-center">
+            <div className="flex justify-center grow">
               {!isSignedIn && <SignInButton />}
               {isSignedIn && <CreatePostWizard />}
             </div>

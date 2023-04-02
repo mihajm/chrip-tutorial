@@ -14,11 +14,15 @@
  *
  * These allow you to access things when processing a request, like the database, the session, etc.
  */
-import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
+import { type CreateNextContextOptions } from '@trpc/server/adapters/next';
 
-import { prisma } from "~/server/db";
+import { prisma } from '~/server/db';
 
-type CreateContextOptions = Record<string, never>;
+import { getAuth } from '@clerk/nextjs/server';
+import { initTRPC, TRPCError } from '@trpc/server';
+import superjson from 'superjson';
+import { ZodError } from 'zod';
+
 
 /**
  * This helper generates the "internals" for a tRPC context. If you need to use it, you can export
@@ -30,11 +34,7 @@ type CreateContextOptions = Record<string, never>;
  *
  * @see https://create.t3.gg/en/usage/trpc#-serverapitrpcts
  */
-const createInnerTRPCContext = (_opts: CreateContextOptions) => {
-  return {
-    prisma,
-  };
-};
+
 
 /**
  * This is the actual context you will use in your router. It will be used to process every request
@@ -42,9 +42,11 @@ const createInnerTRPCContext = (_opts: CreateContextOptions) => {
  *
  * @see https://trpc.io/docs/context
  */
-export const createTRPCContext = (_opts: CreateNextContextOptions) => {
-  return createInnerTRPCContext({});
-};
+export const createTRPCContext = ({req}: CreateNextContextOptions) => ({
+  prisma,
+  currentUser: getAuth(req).userId
+});
+
 
 /**
  * 2. INITIALIZATION
@@ -53,9 +55,6 @@ export const createTRPCContext = (_opts: CreateNextContextOptions) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-import { initTRPC } from "@trpc/server";
-import superjson from "superjson";
-import { ZodError } from "zod";
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
@@ -93,3 +92,22 @@ export const createTRPCRouter = t.router;
  * are logged in.
  */
 export const publicProcedure = t.procedure;
+
+
+const enforceAuth = t.middleware(async ({ctx, next}) => {
+  if (!ctx.currentUser) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You must be logged in to access this resource',
+    });
+  }
+  
+  return next({
+    ctx: {
+      ...ctx,
+      currentUser: ctx.currentUser,
+    }
+  });
+});
+
+export const privateProcedure = t.procedure.use(enforceAuth);
