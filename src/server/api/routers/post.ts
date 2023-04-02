@@ -2,11 +2,19 @@
 import type { User } from '@clerk/nextjs/dist/api';
 import { clerkClient } from '@clerk/nextjs/server';
 import { TRPCError } from '@trpc/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { createTRPCRouter, privateProcedure, publicProcedure } from '~/server/api/trpc';
 import { prisma } from '~/server/db';
 
 const limit = 100;
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, '1 m'),
+  analytics: true,
+});
 
 const filterUserForClient = (
   {id, username, profileImageUrl}: User
@@ -62,7 +70,14 @@ export const postRouter = createTRPCRouter({
         content: z.string().min(1).max(144)
       })
     )
-    .mutation(({ctx: {currentUser}, input: {content}}) => {
+    .mutation(async ({ctx: {currentUser}, input: {content}}) => {
+
+      const {success} = await ratelimit.limit(currentUser);
+
+      if (!success) throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: 'You are posting too fast'
+      });
 
       return prisma.post.create({
         data: {
