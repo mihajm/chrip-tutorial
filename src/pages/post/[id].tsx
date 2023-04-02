@@ -15,7 +15,7 @@ const PostPage: NextPage<{id:string}> = ({id}) => {
   return (
     <>
       <Head>
-        <title>{post.content}</title>
+        <title>{post.content} - {`@${post.author.username}`}</title>
         <meta name="description" content={post.content} />
       </Head>
 
