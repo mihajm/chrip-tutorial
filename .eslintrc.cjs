@@ -7,6 +7,7 @@ const config = {
     {
       extends: [
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        
       ],
       files: ["*.ts", "*.tsx"],
       parserOptions: {
@@ -17,9 +18,11 @@ const config = {
   parser: "@typescript-eslint/parser",
   parserOptions: {
     project: path.join(__dirname, "tsconfig.json"),
+    extraFileExtensions: [".json"],
   },
   plugins: ["@typescript-eslint"],
-  extends: ["next/core-web-vitals", "plugin:@typescript-eslint/recommended"],
+  extends: ["next/core-web-vitals", "plugin:@typescript-eslint/recommended", "plugin:json/recommended"],
+  ignorePatterns: ["node_modules", "dist", "coverage", "public", "package.json", "package-lock.json"],
   rules: {
     "@typescript-eslint/consistent-type-imports": [
       "warn",
@@ -28,7 +31,10 @@ const config = {
         fixStyle: "inline-type-imports",
       },
     ],
+    "quotes": ["error", "single"],
     "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    "semi": ["error", "always"],
+    "indent": ["error", 2],
   },
 };
 
