@@ -23,6 +23,7 @@ const CreatePostWizard = () => {
   const {mutate, isLoading: isPosting} = api.post.create.useMutation({
     onMutate: async ({content}) => {
       if (!user || !user.username) return;
+      setInput('');
       await utils.post.getAll.cancel();
 
       const newPost = {
@@ -88,7 +89,7 @@ const CreatePostWizard = () => {
         className='flex items-center gap-2 bg-blue-500 text-white rounded px-4 py-2 disabled:bg-gray-400 hover:bg-blue-600 active:bg-blue-600'
         disabled={isPosting || !isValidInput(input)}
       >
-        Chirp
+        {isPosting ? 'Chirping...' : 'Chirp'}
         {isPosting && <LoadingSpinner />}
       </button>
     </div>
@@ -103,7 +104,7 @@ const Feed = () => {
   if (!data) return <div>Something went wrong</div>;
   
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col overflow-y-auto h-full scrol">
       {data.map((p) => <PostView key={p.id} {...p} />)}
     </div>
   );

@@ -22,7 +22,7 @@ const ProfileFeed = (props: {authorId: string}) => {
   if (!posts || !posts.length) return <div>No posts</div>;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col  h-full overflow-y-auto">
       {posts.map((post) => <PostView key={post.id} {...post} />) }
     </div>
   );
@@ -56,9 +56,7 @@ const ProfilePage: NextPage<PageProps> = ({username}) => {
         <div className="p-4 text-2xl font-semibold">
           {`@${username}`}
         </div>
-        <div className='border-b border-slate-400'>
-          <ProfileFeed authorId={user.id} />
-        </div>
+        <ProfileFeed authorId={user.id} />
       </PageLayout>
     </>
   );
