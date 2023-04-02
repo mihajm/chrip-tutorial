@@ -2,18 +2,13 @@ import { type NextPage } from 'next';
 import Head from 'next/head';
 
 
-
-
-
-
 const PostPage: NextPage = () => {
 
   return (
     <>
       <Head>
-        <title>Chirp tutorial</title>
-        <meta name="description" content="Tutorial twitter clone, built with t3" />
-        <link rel="icon" href="/favicon.ico" />
+        <title>Post</title>
+        <meta name="description" content="Post" />
       </Head>
       <main className="flex h-screen justify-center ">
         <div>

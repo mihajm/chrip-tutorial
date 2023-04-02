@@ -1,5 +1,4 @@
 
-import type { User } from '@clerk/nextjs/dist/api';
 import { clerkClient } from '@clerk/nextjs/server';
 import { TRPCError } from '@trpc/server';
 import { Ratelimit } from '@upstash/ratelimit';
@@ -7,6 +6,7 @@ import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { createTRPCRouter, privateProcedure, publicProcedure } from '~/server/api/trpc';
 import { prisma } from '~/server/db';
+import { filterUserForClient } from '~/server/helpers/filter-user-for-client';
 
 const limit = 100;
 
@@ -15,15 +15,6 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(3, '1 m'),
   analytics: true,
 });
-
-const filterUserForClient = (
-  {id, username, profileImageUrl}: User
-) =>({
-  id,
-  username,
-  profileImageUrl
-});
-
 
 const getUsersForClient = (ids: string[]) =>  clerkClient.users.getUserList({
   userId: ids,
