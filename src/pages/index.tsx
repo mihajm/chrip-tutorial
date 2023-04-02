@@ -7,8 +7,10 @@ import { api, type RouterOutputs } from '~/utils/api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
-import { LoadingPage } from '~/components/loading';
+import { toast } from 'react-hot-toast';
+import { LoadingPage, LoadingSpinner } from '~/components/loading';
 
 dayjs.extend(relativeTime);
 
@@ -36,6 +38,17 @@ const CreatePostWizard = () => {
     onSuccess: () => {
       setInput('');
       void ctx.post.getAll.invalidate();
+    },
+    onError: (e) => {
+      const msg = e.data?.zodError?.fieldErrors.content;
+      if (!msg || !msg[0]) {
+        return toast.error('Something went wrong', {
+          position: 'bottom-center'
+        });
+      }
+      toast.error(msg[0], {
+        position: 'bottom-center'
+      });
     }
   });
 
@@ -50,25 +63,42 @@ const CreatePostWizard = () => {
         className='bg-transparent grow outline-none'
         value={input} 
         onChange={(e) => setInput(e.target.value)}
-        disabled={isPosting}/>
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || !input) return;
+          mutate({content: input});
+        }}
+        disabled={isPosting}
+      />
       <button 
-        onClick={() => mutate({content: input})} 
-        className='bg-blue-500 text-white rounded px-6 py-2'>Chirp</button>
+        onClick={() => {
+          if (!input) return;
+          mutate({content: input});
+        }} 
+        className='flex items-center gap-2 bg-blue-500 text-white rounded px-4 py-2 disabled:bg-gray-400 hover:bg-blue-600 active:bg-blue-600'
+        disabled={isPosting || !input}
+      >
+        Chirp
+        {isPosting && <LoadingSpinner />}
+      </button>
     </div>
   );
 };
 
 
-const PostView = ({content, createdAt, author}:  PostWithAuthor) => {
+const PostView = ({content, createdAt, author, id: postId}:  PostWithAuthor) => {
 
 
   return <div className=" border-b border-slate-400 p-4 flex align gap-3" >
     <ProfileImage {...author} />
     <div className='flex flex-col'>
       <div className='flex text-slate-300 gap-1'>
-        <span>{`@${author.username}`}</span>
+        <Link href={`/@${author.username}`}>
+          <span>{`@${author.username}`}</span>
+        </Link>
         <span className="font-thin">·</span>
-        <span className="font-thin">{dayjs(createdAt).fromNow()}</span>
+        <Link href={`/post/${postId}`}>
+          <span className="font-thin">{dayjs(createdAt).fromNow()}</span>
+        </Link>
       </div>
       <span className='text-xl'>{content}</span>
     </div>
