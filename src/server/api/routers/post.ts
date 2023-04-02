@@ -1,5 +1,6 @@
 
 import { clerkClient } from '@clerk/nextjs/server';
+import { type Post } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
@@ -21,6 +22,30 @@ const getUsersForClient = (ids: string[]) =>  clerkClient.users.getUserList({
   limit
 }).then((users) => users.map(filterUserForClient));
 
+const addUserDataToPosts = async (posts: Post[]) => {
+  const users = await getUsersForClient(posts.map(({authorId}) => authorId));
+
+  return posts.map(({authorId, ...rest} ) => {
+
+    const author = users.find((u) => u.id === authorId);
+
+    if (!author?.username) throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'Author not found'
+    });
+
+
+    return {
+      ...rest,
+      author: {
+        ...author,
+        username: author.username
+      },
+    };
+
+  });
+};
+
 
 export const postRouter = createTRPCRouter({
   getAll: publicProcedure
@@ -32,29 +57,26 @@ export const postRouter = createTRPCRouter({
         }
       });
 
-      const users = await getUsersForClient(posts.map(({authorId}) => authorId));
-
-      return posts.map(({authorId, ...rest} ) => {
-
-        const author = users.find((u) => u.id === authorId);
-
-        if (!author?.username) throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Author not found'
-        });
-
-
-        return {
-          ...rest,
-          author: {
-            ...author,
-            username: author.username
-          },
-        };
-
-      });
+      return addUserDataToPosts(posts);
     }),
+  
+  getPostsForUser: publicProcedure
+    .input(
+      z.object({
+        authorId: z.string()
+      })
+    )
+    .query(async ({ctx: {prisma}, input: {authorId}}) => {
+      
+      const posts = await prisma.post.findMany({
+        where: {
+          authorId
+        },
+      });
 
+  
+      return addUserDataToPosts(posts);
+    }),
   create: privateProcedure
     .input(
       z.object({

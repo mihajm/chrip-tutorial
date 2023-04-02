@@ -1,29 +1,15 @@
 import { SignInButton, useUser } from '@clerk/nextjs';
 
-import { api, type RouterOutputs } from '~/utils/api';
+import { api } from '~/utils/api';
 
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { type NextPage } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { PageLayout } from '~/components/layout';
 import { LoadingPage, LoadingSpinner } from '~/components/loading';
-import { createUsernameAlt } from '~/server/helpers/create-username-alt';
+import { PostView } from '~/components/post-view';
+import { ProfileImage } from '~/components/profile-image';
 
-dayjs.extend(relativeTime);
-
-type PostWithAuthor = RouterOutputs['post']['getAll'][number];
-
-type Author = PostWithAuthor['author'];
-
-
-
-const ProfileImage = ({username, profileImageUrl}: Author) => {
-  return <Image src={profileImageUrl} alt={createUsernameAlt(username)} className="h-14 w-14 rounded-full" width="56" height="56"/>;
-};
 
 const isValidInput = (input?: string) => !!input && input.length >= 1 && input.length <= 144;
 
@@ -109,43 +95,19 @@ const CreatePostWizard = () => {
   );
 };
 
-
-const PostView = ({content, createdAt, author, id: postId}:  PostWithAuthor) => {
-
-
-  return <div className=" border-b border-slate-400 p-4 flex align gap-3" >
-    <ProfileImage {...author} />
-    <div className='flex flex-col'>
-      <div className='flex text-slate-300 gap-1'>
-        <Link href={`/@${author.username}`}>
-          <span>{`@${author.username}`}</span>
-        </Link>
-        <span className="font-thin">·</span>
-        <Link href={`/post/${postId}`}>
-          <span className="font-thin">{dayjs(createdAt).fromNow()}</span>
-        </Link>
-      </div>
-      <span className='text-xl'>{content}</span>
-    </div>
-  </div>;
-
-};
-
 const Feed = () => {
   const {data, isLoading} = api.post.getAll.useQuery();
-
+  
   if (isLoading) return <LoadingPage />;
-
+  
   if (!data) return <div>Something went wrong</div>;
-
-
+  
   return (
     <div className="flex flex-col">
       {data.map((p) => <PostView key={p.id} {...p} />)}
     </div>
   );
 };
-
 
 const Home: NextPage = () => {
 

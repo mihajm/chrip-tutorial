@@ -4,12 +4,29 @@ import Head from 'next/head';
 import Image from 'next/image';
 import SuperJSON from 'superjson';
 import { PageLayout } from '~/components/layout';
+import { LoadingPage } from '~/components/loading';
+import { PostView } from '~/components/post-view';
 import { appRouter } from '~/server/api/root';
 import { prisma } from '~/server/db';
 import { createUsernameAlt } from '~/server/helpers/create-username-alt';
 import { api } from '~/utils/api';
 
 type PageProps = {username: string};
+
+
+const ProfileFeed = (props: {authorId: string}) => {
+  const {data: posts, isLoading} = api.post.getPostsForUser.useQuery(props);
+
+  if (isLoading) return <LoadingPage />;
+
+  if (!posts || !posts.length) return <div>No posts</div>;
+
+  return (
+    <div className="flex flex-col">
+      {posts.map((post) => <PostView key={post.id} {...post} />) }
+    </div>
+  );
+};
 
 const ProfilePage: NextPage<PageProps> = ({username}) => {
   const {data: user} = api.user.getUserByUsername.useQuery({
@@ -40,7 +57,7 @@ const ProfilePage: NextPage<PageProps> = ({username}) => {
           {`@${username}`}
         </div>
         <div className='border-b border-slate-400'>
-
+          <ProfileFeed authorId={user.id} />
         </div>
       </PageLayout>
     </>
