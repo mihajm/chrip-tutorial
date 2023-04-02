@@ -6,7 +6,6 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 import { createTRPCRouter, privateProcedure, publicProcedure } from '~/server/api/trpc';
-import { prisma } from '~/server/db';
 import { filterUserForClient } from '~/server/helpers/filter-user-for-client';
 
 const limit = 100;
@@ -22,28 +21,28 @@ const getUsersForClient = (ids: string[]) =>  clerkClient.users.getUserList({
   limit
 }).then((users) => users.map(filterUserForClient));
 
+const addUserData = ({authorId, ...rest}: Post, users: Awaited<ReturnType<typeof getUsersForClient>>) => {
+  const author = users.find((u) => u.id === authorId);
+
+  if (!author?.username) throw new TRPCError({
+    code: 'INTERNAL_SERVER_ERROR',
+    message: 'Author not found'
+  });
+
+
+  return {
+    ...rest,
+    author: {
+      ...author,
+      username: author.username
+    },
+  };
+};
+
 const addUserDataToPosts = async (posts: Post[]) => {
   const users = await getUsersForClient(posts.map(({authorId}) => authorId));
 
-  return posts.map(({authorId, ...rest} ) => {
-
-    const author = users.find((u) => u.id === authorId);
-
-    if (!author?.username) throw new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Author not found'
-    });
-
-
-    return {
-      ...rest,
-      author: {
-        ...author,
-        username: author.username
-      },
-    };
-
-  });
+  return posts.map((post) => addUserData(post, users));
 };
 
 
@@ -58,6 +57,24 @@ export const postRouter = createTRPCRouter({
       });
 
       return addUserDataToPosts(posts);
+    }),
+  getOne: publicProcedure
+    .input(
+      z.string()
+    )
+    .query(async ({ctx: {prisma}, input}) => {
+      const post = await prisma.post.findUnique({
+        where: {
+          id: input
+        }
+      });
+
+      if (!post) throw new TRPCError({
+        code: 'NOT_FOUND',
+      });
+      
+
+      return addUserData(post, await getUsersForClient([post.authorId]));
     }),
   
   getPostsForUser: publicProcedure
@@ -83,7 +100,7 @@ export const postRouter = createTRPCRouter({
         content: z.string().min(1).max(144)
       })
     )
-    .mutation(async ({ctx: {currentUser}, input: {content}}) => {
+    .mutation(async ({ctx: {currentUser, prisma}, input: {content}}) => {
 
       const {success} = await ratelimit.limit(currentUser);
 
